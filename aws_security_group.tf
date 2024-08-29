@@ -2,41 +2,48 @@ provider "aws" {
   region = "us-west-2"
 }
 
-# Public S3 Bucket with broad permissions
-resource "aws_s3_bucket" "public_bucket" {
-  bucket = "my-public-bucket-123456"
-  acl    = "public-read"
+# S3 Bucket with 'authenticated-read' ACL
+resource "aws_s3_bucket" "authenticated_bucket" {
+  bucket = "my-authenticated-bucket-123456"
+  acl    = "authenticated-read"
 }
 
-resource "aws_s3_bucket_policy" "public_bucket_policy" {
-  bucket = aws_s3_bucket.public_bucket.id
+resource "aws_s3_bucket_policy" "authenticated_bucket_policy" {
+  bucket = aws_s3_bucket.authenticated_bucket.id
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action   = "s3:*",
+      Action   = "s3:GetObject",
       Effect   = "Allow",
-      Resource = "${aws_s3_bucket.public_bucket.arn}/*",
+      Resource = "${aws_s3_bucket.authenticated_bucket.arn}/*",
       Principal = "*"
     }]
   })
 }
 
-# Security group allowing all traffic
-resource "aws_security_group" "open_sg" {
-  name        = "open-sg"
-  description = "Security group with open inbound and outbound rules."
+# Security group with broad but not full access
+resource "aws_security_group" "broad_sg" {
+  name        = "broad-sg"
+  description = "Security group with broad but not unrestricted rules."
 
   ingress {
-    from_port   = 0
-    to_port     = 65535
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"]  # SSH access from anywhere
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # HTTP access from anywhere
   }
 
   egress {
     from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
+    to_port     = 0
+    protocol    = "-1"  # All outbound traffic
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
